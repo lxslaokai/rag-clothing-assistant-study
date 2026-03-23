@@ -19,14 +19,12 @@ RAG Clothing Customer Service Q&A Assistant Learning and Reproduction Project
 ## 项目目录结构
 
 
-rag-clothing-assistant-study/
-├─ rag-clothing-customer-service/ # Streamlit 页面代码
-├─ data/ # 知识库文件
-├─ assets/ # 界面截图与示例图片
-├─ requirements_fixed.txt # 项目依赖
-├─ README.md # 项目说明
-├─ docs/interview-notes.md # 面试笔记
-
+- rag-clothing-assistant-study/
+- ├─ rag-clothing-customer-service/ # Streamlit 页面代码
+- ├─ data/ # 知识库文件
+- ├─ assets/ # 界面截图与示例图片
+- ├─ requirements_fixed.txt # 项目依赖
+- ├─ README.md # 项目说明
 
 ---
 
@@ -38,17 +36,16 @@ rag-clothing-assistant-study/
 - 建议使用虚拟环境（venv 或 conda）
 
 ### 安装依赖
-
-```bash
 pip install -r requirements_fixed.txt
-启动项目
+
+### 启动项目
 streamlit run app_qa.py
 
 浏览器打开 http://localhost:8501
  即可访问问答助手界面。
 ![系统界面](assets/Home_Page.png)
 
-示例问题与系统回答
+### 示例问题与系统回答
 
 用户可以尝试以下问题（示例），贴近复试场景：
 
@@ -80,7 +77,7 @@ streamlit run app_qa.py
 系统：腰围约 70cm，对应尺码 30 码。
 ![示例5](assets/ex_5.png)
 
-学习复现说明
+### 学习复现说明
 所有代码均为本人复现，不代表官方版本
 复现过程记录了运行步骤、问题与解决方案
 主要目的是为了复试知识掌握和实践 RAG + 大模型应用

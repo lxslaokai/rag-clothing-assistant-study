@@ -1807,7 +1807,7 @@ print(config["question"])
 
 **题后知识点总结**：配置读取、语法解析、结构与业务字段校验是不同阶段。自动测试通过的结论应限于实际覆盖用例，不应扩展到尚未测试的输入。
 
-### RAG-50：先测试缺少question时的友好提示（待操作）
+### RAG-50：先测试缺少question时的友好提示（红灯验证完成）
 
 **知识点**：先把希望程序满足的行为写成测试，再实现功能。当前缺键会产生KeyError调用栈；本题期望明确提示“配置缺少必填字段：question”，并以退出码2结束，不输出调用栈。本题仅覆盖缺question，不代表配置完整校验。
 
@@ -1843,9 +1843,198 @@ cd "D:\Python_test\rag-clothing-assistant-study\rag-clothing-customer-service"
 & "..\.venv\Scripts\python.exe" -m pytest -q -p no:cacheprovider test_inspect_config.py::test_missing_question_reports_error
 ```
 
-**答案与解析**：待学生提交实际结果。根据本轮读取的源码，预计测试失败，因为当前程序没有缺字段检查；这是暴露未实现需求，不是要求把断言改成接受KeyError。先创建参考文件，以免FileNotFoundError抢先遮蔽目标缺键错误。tmp_path提供临时目录；subprocess.run运行脚本，capture_output收集输出，returncode为退出码，stdout为正常输出，stderr为错误输出。四条断言分别检查退出码、具体提示、没有调用栈、没有正常结果。
+**答案与解析**：学生截图显示1 failed in 2.58s，test_inspect_config.py第47行assert result.returncode == 2失败，实际值为1；子进程错误是KeyError: 'question'。教师读取实际测试和inspect_config.py后，单独复跑该测试，得到1 failed in 0.72s，同样因脚本退出码1不等于期望2而失败。判断：红灯验证完成，失败来自目标功能尚未实现，不是要求把断言改成接受KeyError。第一条断言失败后，本次没有执行后面三条断言。先创建参考文件，是为了避免FileNotFoundError抢先遮蔽目标缺键错误。tmp_path提供临时目录；subprocess.run运行脚本，capture_output收集输出，returncode为脚本退出码，stdout为正常输出，stderr为错误输出。四条断言分别检查退出码、具体提示、没有调用栈、没有正常结果。
 
 **题后知识点总结**：失败测试可以精确描述待实现行为；要让测试输入只触发目标问题，避免其他缺失文件等错误遮蔽原因。教师只更新题目记录，不代写学生代码或运行其待做练习。
+
+### RAG-51：在字典取值前检查必填键（已通过）
+
+**学习反馈与暂停说明**：学生明确反馈“其实看不懂这些代码在做什么”，特别是不清楚test文件与普通文件为何分开，并询问是否先学视频分析项目中的《零到全栈》。暂停本题改代码，不将此前照例运行或测试通过等同于独立理解。先补程序职责、函数调用与导入、手动检查和自动测试的关系，再回到本题。
+
+**前置补课：程序与测试**：test文件也是普通Python文件。inspect_prompt.py提供build_prompt函数，负责把问题和资料组装成提示词；inspect_config.py读取配置和资料，再调用该函数。test_inspect_prompt.py和test_inspect_config.py负责准备输入、调用函数或运行脚本、用assert检查结果。分开是为了让实际功能与检查规则各自清楚，正常运行工具不需要同时运行测试。pytest按约定发现test_*.py中的test_开头函数。本项目测试既有直接调用函数的简单测试，也有通过subprocess启动脚本的命令行测试；后者同时引入临时文件、进程、输出流和退出码，对当前理解负担偏大。先读懂一条直接调用build_prompt的测试，暂缓subprocess等组合知识。
+
+**教材选择的当前依据**：已读取C:/Users/zheng/Documents/ChatGPT/视频分析/outputs/李勃老师_零到全栈_完整目录与个人适配评估_2026-10-28.md。该旧评估推荐它作为固定全栈入门教材，指出其Python部分主要是环境与识别代码，不能替代函数、模块、异常和自动测试训练。本轮未重新联网核验合集更新，也未完整观看视频。建议先用1.1与1.2建立结构；2.2终端、5.2环境按实际缺口补，不要求先刷完整系列；后端与数据库章节在前置条件满足后重点学习。观看、动手和解释共用原学习时间，不叠加另一套全量计划或挤占医院优先任务。
+
+**前置理解检查**：测试里调用build_prompt后，若有人误改函数，使它漏掉参考资料，检查参考资料文字是否在结果中的assert会通过还是失败？为什么？只解释，不改代码。
+
+**学生答案与判断**：你回答“报错，因为没有参考资料的话，程序回答就不会有相应的关键字”。判断：能识别该断言会失败，方向正确；需纠正检查对象。build_prompt返回组装好的提示词，不是大模型回答，本例没有模型调用。如果输出里漏掉要求的资料文字，in判断为False，assert抛出AssertionError，pytest把它报告为测试失败。这不一定意味着组装函数自身抛了异常，也不表示已经验证模型回答。
+
+**前置补课二：读懂当前文件中的一条直接函数测试**：在test_inspect_prompt.py中，test_build_prompt给build_prompt传入M码问题和M码资料，拿到text后依次检查三项：参考资料文字在提示词中、Human消息包含用户问题、提示词包含“不编造”规则。测试结构是准备输入、执行功能、检查结果。每条assert只验证写出的那个条件；“包含不编造”不等于模型一定遵守规则。若某条断言失败，同一测试函数中后续断言不会继续执行。
+
+**补课二理解检查**：假设函数返回的text仍有完整参考资料和“不编造”，却漏掉用户问题。下面三个检查最先在哪一条失败？只指出对应行，不改代码。
+
+```python
+assert "参考资料：M码上衣：胸围96-100cm。" in text
+assert "Human: M码上衣的胸围是多少？" in text
+assert "不编造" in text
+```
+
+**补课二答案与判断**：你回答“第二条”。正确。第一条检查资料，仍满足；第二条检查Human消息中的问题，因缺失而失败；该测试函数随即中断，不再执行第三条。此处只确认能分辨这三条断言的职责，不推断已能独立编写全部测试。
+
+**前置补课三：单独运行已有函数测试（已运行通过）**：不改任何文件，在服务目录运行以下命令，只选test_inspect_prompt.py中的test_build_prompt：
+
+```powershell
+cd "D:\Python_test\rag-clothing-assistant-study\rag-clothing-customer-service"
+& "..\.venv\Scripts\python.exe" -m pytest -q -p no:cacheprovider test_inspect_prompt.py::test_build_prompt
+```
+
+**解析**：def定义函数，不会仅因定义而执行函数体。pytest导入测试文件、找到指定测试函数并调用；测试函数再调用从inspect_prompt导入的build_prompt，得到提示词后执行三条assert。::用于选择该文件里的一个测试函数，-q精简输出，-p no:cacheprovider关闭pytest缓存。三个assert属于同一个test_build_prompt测试，因此全部满足时计1 passed，不是3 passed。命令不调用模型；也不运行仍待修复的缺question配置测试。
+
+**补课三结果与判断**：学生截图显示运行test_inspect_prompt.py::test_build_prompt，1 passed in 0.27s。判断：这条直接函数测试通过，三个断言属于同一个测试；不代表全部测试通过，也不表示配置缺字段问题已经修复。截图中编辑器打开的是test_inspect_config.py，但终端命令明确选择了另一个文件的测试，运行目标由命令决定。教师本轮只核对源码和更新笔记，没有代跑测试。原RAG-51缺字段实现仍暂停。
+
+**前置补课四：从测试回到实际功能**：打开inspect_prompt.py，只阅读模板和build_prompt部分，不改代码。模板预留context与input两个位置；调用build_prompt时，第一项问题绑定question，第二项资料绑定reference。question.strip()产生去掉首尾空白后的字符串，用not检查是否为空，空问题抛ValueError。template.invoke接收字典，把reference填进context，把question填进input；此处invoke的对象是提示词模板，不是聊天模型。prompt.to_string把组装结果转为字符串，return交还调用者；测试用text接住它。question/reference是函数内参数名，context/input是模板占位名，prompt/text是不同作用域中的变量名，不要混为一套固定命名。
+
+**补课四理解检查**：请用自己的话解释build_prompt接收哪两样东西、返回什么，以及返回的是否已经是模型回答。作为一个完整解释题，不运行或修改程序。
+
+**补课四答案与判断**：你回答“接收的是参考资料和用户的回答，返回这两个组合的文本。没有调用模型”。主体理解正确：知道组装文字且无模型调用；术语需改为用户问题而非回答。调用顺序是build_prompt(question, reference)，返回内容除问题与资料，还包括模板中的回答规则和角色标记，不只是两段原文相加。
+
+**补课四知识点总结**：先明确输入、处理和输出，再读具体语句。测试函数与被测函数是调用关系；return返回值，调用者可用自己的变量名接收。相同的invoke方法名不代表相同职责，需要看调用它的对象。
+
+**前置补课五：一次可恢复的断言实验（已完成）**：只在test_inspect_prompt.py的test_build_prompt内，将assert "不编造" in text临时改为assert "允许编造" in text，保存后运行下面的单测试命令。观察失败后，立即恢复为原来的assert "不编造" in text并保存，再运行同一命令。inspect_prompt.py、配置文件和其他测试均不修改，提交两次结果。
+
+```powershell
+cd "D:\Python_test\rag-clothing-assistant-study\rag-clothing-customer-service"
+& "..\.venv\Scripts\python.exe" -m pytest -q -p no:cacheprovider test_inspect_prompt.py::test_build_prompt
+```
+
+**补课五答案与解析**：学生第一张截图显示检查“允许编造”时，test_inspect_prompt.py第15行AssertionError，1 failed in 0.38s；第二张截图显示恢复“不编造”后，1 passed in 0.15s。教师读取当前文件，确认已恢复assert "不编造" in text。判断：本次断言实验完成，截图证据支持先失败后恢复通过；教师未代改或代跑。本次演示只改变检查要求，失败不必然代表功能代码有错，也可能是检查要求写错。正式修复RAG50的真实需求仍应保留正确断言、修改功能，不能靠降低要求让它通过；本次不代表缺字段问题已修复。
+
+**前置补课六：测试应该发生的异常（待回答）**：现有build_prompt在问题为空或纯空白时执行raise ValueError("问题不能为空")，用于拒绝非法输入。question.strip()得到去除首尾空白后的字符串，纯空格得到空串，not空串为True，因此不继续组装提示词。下面把现有参数化测试简化为一个输入讲解，不要求新增或改写文件：
+
+```python
+with pytest.raises(ValueError, match="问题不能为空"):
+    build_prompt("   ", "M码上衣：胸围96-100cm。")
+```
+
+**补课六解析**：此处with pytest.raises(...)规定缩进代码应抛出ValueError，并且错误提示应匹配“问题不能为空”；符合预期则这项检查通过。未抛出异常、异常类型不匹配或提示不匹配都会导致失败。match使用正则匹配，本例文字不含特殊正则符号。正常输入检查返回结果，非法输入检查拒绝方式；不是“出现任何异常都算测试失败”。暂不讲参数化装饰器或子进程。
+
+**补课六理解检查**：如果build_prompt错误地接受了纯空格问题，正常返回一段提示词，而没有抛出ValueError，上面这项异常检查会通过还是失败？为什么？
+
+**补课六答案与知识点总结**：你回答“失败，因为没有抛出对应的异常，所以会导致检查不通过”。正确。应根据约定的行为判断测试是否通过，区分正常结果检查与预期异常检查；程序不报错也不一定满足要求。
+
+**前置补课七：同一检查使用三个输入（已通过）**：读取test_inspect_prompt.py里已有的参数化测试，不新增或修改代码：
+
+```python
+@pytest.mark.parametrize("question", ["", "   ", "\t\n"])
+def test_build_prompt_rejects_blank_question(question):
+    with pytest.raises(ValueError, match="问题不能为空"):
+        build_prompt(question, "M码上衣：胸围96-100cm。")
+```
+
+**补课七解析**：这一行@开头的参数化标记让pytest给下方函数的question参数依次传入列表中的三个值，各运行一次相同检查。空串、纯空格、制表符加换行符经strip()处理后都成为空串，都应触发ValueError。"question"指定测试参数名，不是模板占位input，也不是读取配置文件的键。此处先理解参数化用途，不展开装饰器实现。一个测试函数参数化为三个测试用例，全部满足时报告3 passed；与同一用例中三个assert报告1 passed不同。
+
+**补课七任务与命令**：在PowerShell运行下面的指定测试，将实际结果发来；不运行配置测试、不调用模型。
+
+```powershell
+cd "D:\Python_test\rag-clothing-assistant-study\rag-clothing-customer-service"
+& "..\.venv\Scripts\python.exe" -m pytest -q -p no:cacheprovider test_inspect_prompt.py::test_build_prompt_rejects_blank_question
+```
+
+**补课七结果与判断**：学生截图显示指定空白问题参数化测试3 passed in 0.14s，并反馈“这里我懂”。本题通过，不继续重复参数化练习；不据此推断配置缺字段测试也已通过。教师未代跑测试。
+
+**补课七知识点总结**：用一套检查覆盖多个输入，分别验证边界情况。测试用例数量由参数化展开决定，不由assert语句数量决定。原RAG-51的缺字段实现仍暂停。
+
+**前置补课八：为什么命令行测试要启动另一个Python进程（待回答）**：阅读现有test_cli_uses_question_and_reference，不改文件。直接调用build_prompt检查函数逻辑，但不会执行inspect_prompt.py的命令行入口块。subprocess.run用指定解释器启动脚本，可以覆盖参数解析、入口调用、输出与退出状态等连接部分。因此函数正确不代表命令行入口正确。
+
+**补课八代码与解析**：script由当前测试文件定位同目录inspect_prompt.py；sys.executable是正在运行测试的Python解释器路径，保证新进程使用同一解释器；-X utf8启用其UTF-8模式。参数列表依次是程序、解释器选项、脚本路径和脚本参数，不是调用build_prompt的位置参数。capture_output=True收集新进程输出，encoding="utf-8"把捕获的字节解码成文字，timeout=10限制本次等待秒数。result是执行结果对象，不是提示词字符串；result.returncode是退出码，result.stdout是正常输出通道里的文字，result.stderr是错误/日志通道里的文字。stderr非空不一定代表执行失败，当前脚本的INFO日志也在stderr。命令行成功用例检查退出码0，并在stdout中查找问题和资料文字。
+
+**补课八理解检查**：假设有人只把inspect_prompt.py入口的参数名从--question误改成--query，build_prompt函数完全不变。之前直接调用build_prompt的测试，能发现这个命令行参数错误吗？为什么？只解释，不实际改文件。
+
+**补课八首答与判断**：你回答“会报错，因为函数里面找不到对应的参数”。这次判断不正确，混淆了命令行选项与函数参数。直接测试仍调用build_prompt("问题", "资料")，按位置把两段文字交给question和reference，不传--question，也不运行命令行解析。测试从inspect_prompt导入函数时，__main__入口块不执行。因此本题仅入口选项改名，不会使这项直接函数测试失败。仍使用--question启动脚本的命令行测试才会发现入口不再接受原选项。当前实际源码未做该假设改动；仅把选项改名而仍访问args.question，也可能导致新命令路径的属性错误，亦不属于直接函数测试所覆盖的入口。
+
+**同题补充解析**：命令行路径是--question的值经parser.parse_args成为args.question，再由build_prompt(args.question, reference)交给函数；直接测试直接交入文字，绕过前面的解析过程。相似名字不是同一个机制。
+
+**同题巩固**：要验证用户在终端使用--question时能否成功，应该选择直接函数测试还是命令行测试？为什么？只解释，不改代码。
+
+**巩固答案与判断**：你回答“命令行测试，因为直接调用函数测试不经过参数解析”。正确，确认了两类测试覆盖范围的区别。补课八的本题辨析通过，不推断已独立掌握subprocess所有参数。
+
+**补课八知识点总结**：函数测试与命令行测试覆盖不同范围；subprocess用于启动并观察另一程序，不是模型调用，也不是把字符串变成提示词的函数。当前先理解职责，再深入各参数，原RAG-51实现仍暂停。
+
+**前置补课九：运行并读懂现有命令行成功测试（待操作）**：在test_inspect_prompt.py中阅读test_cli_uses_question_and_reference。前半部分定位脚本并启动新的Python进程，后半部分检查执行结果，不修改文件：
+
+```python
+assert result.returncode == 0, result.stderr
+assert "Human: M码上衣的胸围是多少？" in result.stdout
+assert "参考资料：M码上衣：胸围96-100cm。" in result.stdout
+```
+
+**补课九解析**：第一条要求被启动脚本的退出码为0，表示正常结束；逗号后的result.stderr仅在断言失败时用作报错说明，不是另一个判断条件，不要求stderr为空。后两条检查脚本通过print输出的提示词是否含有正确的问题和资料。返回码0本身不证明内容正确，所以同时检查输出。capture_output=True让测试拿到脚本输出，因此成功时终端不一定显示提示词正文，而显示pytest汇总。日志可能在stderr，即使非空也不能直接认定失败。
+
+**补课九任务与命令**：不改文件，在PowerShell执行以下单测试命令，提交实际结果：
+
+```powershell
+cd "D:\Python_test\rag-clothing-assistant-study\rag-clothing-customer-service"
+& "..\.venv\Scripts\python.exe" -m pytest -q -p no:cacheprovider test_inspect_prompt.py::test_cli_uses_question_and_reference
+```
+
+**补课九结果与知识点总结**：学生截图显示test_cli_uses_question_and_reference为1 passed in 0.87s。该单测试通过，覆盖命令行参数进入提示词并被打印的流程，不调用模型，不代表配置缺字段问题已经修复。测试应同时检查程序状态与有意义的输出；教师本轮未代跑。
+
+**前置补课十：空问题从函数异常到命令行提示（待操作）**：阅读inspect_prompt.py现有处理，不改代码。问题为纯空白时，build_prompt抛ValueError("问题不能为空")；入口try中的调用中断，except ValueError as error接住这个异常；str(error)取得提示文字，parser.error(str(error))写入stderr并以状态码2终止。后面的成功日志和print(text)不会执行，所以stdout应为空。这里处理预期的输入错误，不表示所有异常都被捕获。
+
+**补课十测试检查**：现有test_cli_rejects_blank_question通过subprocess用--question传入纯空格，检查四项：returncode为2、stderr有“问题不能为空”、stdout为空、stderr不包含Traceback。被测脚本退出2表示正确拒绝该输入；pytest将检查结果全部符合要求记为测试通过，两者不是同一个状态。
+
+```python
+assert result.returncode == 2, result.stderr
+assert "问题不能为空" in result.stderr
+assert result.stdout == ""
+assert "Traceback" not in result.stderr
+```
+
+**补课十任务与命令**：不修改文件，运行现有空问题命令行测试，提交实际结果并用一句话解释“为什么脚本退出码2，测试仍可以passed”。
+
+```powershell
+cd "D:\Python_test\rag-clothing-assistant-study\rag-clothing-customer-service"
+& "..\.venv\Scripts\python.exe" -m pytest -q -p no:cacheprovider test_inspect_prompt.py::test_cli_rejects_blank_question
+```
+
+**补课十结果与知识点总结**：学生截图显示test_cli_rejects_blank_question为1 passed in 0.78s，并回答“因为这里目的就是为了检测错误的时候会怎么样。退出码是2符合要求”。正确，理解了非法输入测试的目标是验证拒绝行为，而不是要求脚本总以0退出。函数通过异常报告非法输入，入口将它转换为命令行提示与退出码，测试检查这个约定。教师未代跑。本项通过，回到RAG-51配置缺字段检查，不继续增加前置题。
+
+**补课知识点总结**：测试调用真实功能，再检查输出是否满足具体要求；要区分提示词与模型答案，也要区分函数异常与断言发现输出不符合要求。当前先学直接函数测试，原RAG-51的缺字段实现仍暂停。
+
+**恢复RAG-51**：上述补课已完成对应回答和运行验证，现恢复本题动手。当前实际inspect_config.py仍未加入字段检查，test_missing_question_reports_error仍保留原四条断言；不以补课通过推断本题已通过。将“非法输入应得到明确提示与约定退出码”的同一原则用于缺question字段。
+
+**知识点**：对字典使用in或not in时，检查的是键是否存在，不是键对应的值。假设配置已经解析为字典，if "question" not in config表示缺少question键时执行分支。parser.error输出命令行错误提示并以状态码2结束，不会继续执行后续取值。
+
+**题目**：只修改D:/Python_test/rag-clothing-assistant-study/rag-clothing-customer-service/inspect_config.py，在现有except json.JSONDecodeError分支结束之后、reference_path = ...之前插入以下两行。不修改测试、不改真实JSON。if与reference_path同级，均在入口块内；parser.error在if内再缩进一级。
+
+```python
+    if "question" not in config:
+        parser.error("配置缺少必填字段：question")
+```
+
+**解析**：有question键时，条件为False，跳过提示并继续原流程；缺键时，条件为True，明确指出缺失项并终止。已有JSONDecodeError分支只处理JSON语法，新增检查处理解析成功后缺question键的问题。不要把实际退出码1改写为测试期望值，不要把测试断言改成1。
+
+**运行位置与命令**：保存后，在PowerShell运行指定的两份离线测试，核对原有行为和新行为：
+
+```powershell
+cd "D:\Python_test\rag-clothing-assistant-study\rag-clothing-customer-service"
+& "..\.venv\Scripts\python.exe" -m pytest -q -p no:cacheprovider test_inspect_prompt.py test_inspect_config.py
+```
+
+**学生结果与判断**：学生截图显示两指定测试11 passed in 4.43s。教师读取实际inspect_config.py，确认JSONDecodeError分支结束后、reference_path取值前已新增question键存在检查；读取test_inspect_config.py确认原缺键四条断言保留。教师复跑两指定测试，11 passed in 4.41s，退出码0；仅清理空行尾空格后再次复跑，11 passed in 4.37s。判断：RAG-51通过，RAG-50/51完成了缺question需求的先失败后通过验证。学生完成源码与测试，教师仅清理一处空行尾空格，并更新笔记和README，不增加功能或代做后续练习。验证后按授权同步本次已完成节点，具体提交以回报为准；此前未同步的网页服务改动仍保留本地。
+
+**题后知识点总结**：先确认失败来自目标需求，再做最小修改，并运行新增与已有测试。检查键存在不等于检查类型、空字符串或其他字段；本题不代表完整配置校验。
+
+### RAG-52：只检查question能否发现其他缺字段（待回答）
+
+**知识点**：一条键存在检查只覆盖它指定的那个键。JSON解析成功、包含question，都不代表reference_file也存在；测试通过结论应限于实际覆盖的输入。
+
+**题目**：假设JSON已成功解析为下面的字典，只预测后续两段代码的行为，不修改真实配置、不运行：
+
+```python
+config = {"question": "M码上衣的胸围是多少？"}
+
+if "question" not in config:
+    parser.error("配置缺少必填字段：question")
+
+reference_path = config_path.parent / config["reference_file"]
+```
+
+**理解检查**：刚加的question检查，能否提前发现这里缺少reference_file？为什么？
+
+**答案、判断与解析**：待学生回答。参考判断是不能，question键存在使条件为False，后面取不存在的reference_file会抛KeyError。尚未实现或测试该字段校验，不作为学生已掌握的结论。
+
+**题后知识点总结**：按字段和输入情况明确验证范围；下一个需求仍应先写或扩展测试，再补实现，不靠通过已有样例推断所有非法配置都已处理。
 
 ## 教学插曲：把聊天模型改接DeepSeek官方API（已取消，仅保留参考）
 

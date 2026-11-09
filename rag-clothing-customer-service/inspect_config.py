@@ -19,6 +19,10 @@ if __name__ == "__main__":
         config = json.loads(config_text)
     except json.JSONDecodeError as error:
         parser.error(f"配置文件不是有效的JSON：{error}")
+
+    if "question" not in config:
+        parser.error("配置缺少必填字段：question")
+
     reference_path = config_path.parent / config["reference_file"]
     reference = reference_path.read_text(encoding="utf-8")
     text = build_prompt(config["question"], reference)
